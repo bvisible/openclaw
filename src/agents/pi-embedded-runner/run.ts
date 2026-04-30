@@ -928,6 +928,11 @@ export async function runEmbeddedPiAgent(
             images: params.images,
             imageOrder: params.imageOrder,
             clientTools: params.clientTools,
+            // NORA patch 7 — propagate the synchronous executor descriptor.
+            // Without this hop the backend attempt receives `undefined`,
+            // falls through to the legacy "awaiting_external_result"
+            // sentinel, and the host never sees the inline path it wired.
+            clientToolExecutor: params.clientToolExecutor,
             disableTools: params.disableTools,
             provider,
             modelId,
