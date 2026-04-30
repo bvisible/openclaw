@@ -156,7 +156,14 @@ function buildExecApprovalPromptGuidance(params: {
   return 'When exec returns approval-pending, include the concrete /approve command from the tool output\'s "Reply with:" line as plain chat text for the user, and do not ask for a different or rotated code.';
 }
 
-function buildSkillsSection(params: { skillsPrompt?: string; readToolName: string }) {
+function buildSkillsSection(params: {
+  skillsPrompt?: string;
+  readToolName: string;
+  dropSkillsSection?: boolean;
+}) {
+  if (params.dropSkillsSection === true) {
+    return [];
+  }
   const trimmed = params.skillsPrompt?.trim();
   if (!trimmed) {
     return [];
@@ -467,6 +474,8 @@ export function buildAgentSystemPrompt(params: {
   userTimeFormat?: ResolvedTimeFormat;
   contextFiles?: EmbeddedContextFile[];
   skillsPrompt?: string;
+  /** When true, omit the bundled "## Skills" section even if `skillsPrompt` is set. */
+  dropSkillsSection?: boolean;
   heartbeatPrompt?: string;
   docsPath?: string;
   sourcePath?: string;
@@ -694,6 +703,7 @@ export function buildAgentSystemPrompt(params: {
   const skillsSection = buildSkillsSection({
     skillsPrompt,
     readToolName,
+    dropSkillsSection: params.dropSkillsSection,
   });
   const memorySection = buildMemorySection({
     isMinimal,

@@ -843,6 +843,12 @@ export const AgentEntrySchema = z
     reasoningDefault: z.enum(["on", "off", "stream"]).optional(),
     fastModeDefault: z.boolean().optional(),
     skills: z.array(z.string()).optional(),
+    /**
+     * When true, the agent's system prompt omits the bundled "## Skills" catalog
+     * block. Useful for compact responder agents that load skills lazily via the
+     * `read` tool instead of carrying the full skill list in every prompt.
+     */
+    dropSkillsSection: z.boolean().optional(),
     memorySearch: MemorySearchSchema,
     humanDelay: HumanDelaySchema.optional(),
     tts: TtsConfigSchema,

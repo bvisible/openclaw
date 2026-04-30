@@ -174,6 +174,34 @@ describe("buildAgentSystemPrompt", () => {
     expect(prompt).not.toContain("## Skills");
   });
 
+  it("omits skills section when dropSkillsSection=true even with skillsPrompt", () => {
+    // Compact responder agents opt-out of the bundled skills catalog and load
+    // skills lazily via the read tool instead.
+    const skillsPrompt =
+      "<available_skills>\n  <skill>\n    <name>demo</name>\n  </skill>\n</available_skills>";
+    const prompt = buildAgentSystemPrompt({
+      workspaceDir: "/tmp/openclaw",
+      skillsPrompt,
+      dropSkillsSection: true,
+    });
+
+    expect(prompt).not.toContain("## Skills (mandatory)");
+    expect(prompt).not.toContain("<available_skills>");
+  });
+
+  it("keeps skills section when dropSkillsSection=false (default)", () => {
+    const skillsPrompt =
+      "<available_skills>\n  <skill>\n    <name>demo</name>\n  </skill>\n</available_skills>";
+    const prompt = buildAgentSystemPrompt({
+      workspaceDir: "/tmp/openclaw",
+      skillsPrompt,
+      dropSkillsSection: false,
+    });
+
+    expect(prompt).toContain("## Skills (mandatory)");
+    expect(prompt).toContain("<available_skills>");
+  });
+
   it("avoids the Claude subscription classifier wording in reply tag guidance", () => {
     const prompt = buildAgentSystemPrompt({
       workspaceDir: "/tmp/openclaw",

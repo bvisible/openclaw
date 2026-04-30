@@ -96,6 +96,12 @@ export type AgentConfig = {
   fastModeDefault?: boolean;
   /** Optional allowlist of skills for this agent; omitting it inherits agents.defaults.skills when set, and an explicit list replaces defaults instead of merging. */
   skills?: string[];
+  /**
+   * When true, omit the bundled "## Skills" section from this agent's system
+   * prompt. Useful for compact responder agents that load skills lazily via the
+   * `read` tool instead of carrying the full skill catalog in every prompt.
+   */
+  dropSkillsSection?: boolean;
   memorySearch?: MemorySearchConfig;
   /** Human-like delay between block replies for this agent. */
   humanDelay?: HumanDelayConfig;

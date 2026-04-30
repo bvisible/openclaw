@@ -751,6 +751,9 @@ export async function compactEmbeddedPiSessionDirect(
             defaultAgentId,
           }),
           skillsPrompt,
+          dropSkillsSection:
+            params.config?.agents?.list?.find((entry) => entry.id === sessionAgentId)
+              ?.dropSkillsSection === true,
           docsPath: openClawReferences.docsPath ?? undefined,
           sourcePath: openClawReferences.sourcePath ?? undefined,
           ttsHint,
