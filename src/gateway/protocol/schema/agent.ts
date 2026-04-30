@@ -168,6 +168,32 @@ export const AgentParamsSchema = Type.Object(
     internalEvents: Type.Optional(Type.Array(AgentInternalEventSchema)),
     inputProvenance: Type.Optional(InputProvenanceSchema),
     voiceWakeTrigger: Type.Optional(Type.String()),
+    // NORA fork patch 4 — accept OpenAI function-calling tool definitions over
+    // the WS ingress so adapters (e.g. Paperclip) can pass plugin tools
+    // directly to the LLM as native function-calls instead of asking the
+    // model to emit a `<tool_call>` text block. The internal runner already
+    // accepts `clientTools` (AgentCommandOpts.clientTools, used by the HTTP
+    // /v1/responses path); the WS schema previously rejected the field due
+    // to `additionalProperties: false`.
+    clientTools: Type.Optional(
+      Type.Array(
+        Type.Object(
+          {
+            type: Type.Literal("function"),
+            function: Type.Object(
+              {
+                name: NonEmptyString,
+                description: Type.Optional(Type.String()),
+                parameters: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
+                strict: Type.Optional(Type.Boolean()),
+              },
+              { additionalProperties: false },
+            ),
+          },
+          { additionalProperties: false },
+        ),
+      ),
+    ),
     idempotencyKey: NonEmptyString,
     label: Type.Optional(SessionLabelString),
   },

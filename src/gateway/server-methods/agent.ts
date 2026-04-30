@@ -430,6 +430,18 @@ export const agentHandlers: GatewayRequestHandlers = {
       bootstrapContextRunKind?: "default" | "heartbeat" | "cron";
       acpTurnSource?: "manual_spawn";
       internalEvents?: AgentInternalEvent[];
+      // NORA fork patch 5 — accept OpenAI function-calling tool definitions
+      // forwarded by the WS ingress so adapters (Paperclip) can wire native
+      // function-calls. Mirrors the shape accepted by AgentCommandOpts.clientTools.
+      clientTools?: Array<{
+        type: "function";
+        function: {
+          name: string;
+          description?: string;
+          parameters?: Record<string, unknown>;
+          strict?: boolean;
+        };
+      }>;
       idempotencyKey: string;
       timeout?: number;
       bestEffortDeliver?: boolean;
@@ -1184,6 +1196,9 @@ export const agentHandlers: GatewayRequestHandlers = {
           bootstrapContextRunKind: request.bootstrapContextRunKind,
           acpTurnSource: request.acpTurnSource,
           internalEvents: request.internalEvents,
+          // NORA fork patch 5 — propagate WS-supplied OpenAI tool definitions
+          // through to the embedded runner (mirrors the HTTP /v1/responses path).
+          clientTools: request.clientTools,
           inputProvenance,
           abortSignal: activeRunAbort.controller.signal,
           // Internal-only: allow workspace override for spawned subagent runs.
