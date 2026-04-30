@@ -43,6 +43,18 @@ export type AgentCommandOpts = {
   imageOrder?: PromptImageOrderEntry[];
   /** Optional client-provided tools (OpenResponses hosted tools). */
   clientTools?: ClientToolDefinition[];
+  /**
+   * NORA patch 7 — synchronous executor descriptor for clientTools. When
+   * provided, the embedded runner executes clientTool calls inline (HTTP
+   * fetch with Bearer auth) instead of returning the legacy "pending"
+   * sentinel.
+   */
+  clientToolExecutor?: {
+    url: string;
+    apiKey: string;
+    runId: string;
+    timeoutMs?: number;
+  };
   /** Agent id override (must exist in config). */
   agentId?: string;
   /** Per-run provider override. */

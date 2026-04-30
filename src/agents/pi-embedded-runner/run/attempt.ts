@@ -1402,6 +1402,10 @@ export async function runEmbeddedAttempt(
               runId: params.runId,
               loopDetection: clientToolLoopDetection,
             },
+            // NORA patch 7 — forward synchronous executor when provided so
+            // clientTools execute inline (Qwen-class models compatible) rather
+            // than via the OpenResponses async-roundtrip pattern.
+            params.clientToolExecutor,
           )
         : [];
 

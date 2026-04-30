@@ -450,6 +450,8 @@ export function runAgentAttempt(params: {
     images: params.isFallbackRetry ? undefined : params.opts.images,
     imageOrder: params.isFallbackRetry ? undefined : params.opts.imageOrder,
     clientTools: params.opts.clientTools,
+    // NORA patch 7 — synchronous clientTool executor.
+    clientToolExecutor: params.opts.clientToolExecutor,
     provider: params.providerOverride,
     model: params.modelOverride,
     authProfileId,

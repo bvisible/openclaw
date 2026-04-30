@@ -194,6 +194,20 @@ export const AgentParamsSchema = Type.Object(
         ),
       ),
     ),
+    // NORA patch 7 — synchronous clientTool executor (host endpoint that
+    // executes plugin tools inline). When provided, clientTools execute via
+    // this URL and return the real result to the LLM in the same turn.
+    clientToolExecutor: Type.Optional(
+      Type.Object(
+        {
+          url: NonEmptyString,
+          apiKey: NonEmptyString,
+          runId: NonEmptyString,
+          timeoutMs: Type.Optional(Type.Integer({ minimum: 0 })),
+        },
+        { additionalProperties: false },
+      ),
+    ),
     idempotencyKey: NonEmptyString,
     label: Type.Optional(SessionLabelString),
   },

@@ -92,6 +92,18 @@ export type RunEmbeddedPiAgentParams = {
   imageOrder?: PromptImageOrderEntry[];
   /** Optional client-provided tools (OpenResponses hosted tools). */
   clientTools?: ClientToolDefinition[];
+  /**
+   * NORA patch 7 — when present, clientTool calls are executed inline by the
+   * runner (HTTP fetch with Bearer auth) instead of returning the legacy
+   * "pending / delegated to client" sentinel. Required for Qwen-class models
+   * that don't honour the OpenResponses async contract.
+   */
+  clientToolExecutor?: {
+    url: string;
+    apiKey: string;
+    runId: string;
+    timeoutMs?: number;
+  };
   /** Disable built-in tools for this run (LLM-only mode). */
   disableTools?: boolean;
   provider?: string;

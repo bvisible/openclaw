@@ -307,12 +307,64 @@ function coerceParamsRecord(value: unknown): Record<string, unknown> {
   return {};
 }
 
+// NORA fork patch 7 — synchronous executor descriptor.
+// The default behaviour returns a "pending" sentinel and notifies the caller
+// out-of-band, which works for Claude (it stops after a tool_call) but breaks
+// with Qwen-class models that ignore the sentinel and keep generating.
+// When the embedded runner is configured with a `ClientToolSyncExecutor`, the
+// execute callback below performs the HTTP call inline and returns the real
+// tool result to the LLM in the same turn — converting the OpenResponses
+// "hosted tool" pattern into a regular Pi tool round-trip.
+export interface ClientToolSyncExecutor {
+  /** Absolute URL of the host endpoint that executes plugin tools. */
+  url: string;
+  /** Bearer token for the Authorization header. */
+  apiKey: string;
+  /** Run id forwarded as `X-Paperclip-Run-Id` so the host can scope auth. */
+  runId: string;
+  /** Optional connect timeout in ms (default 30s). */
+  timeoutMs?: number;
+}
+
+async function executeClientToolViaExecutor(
+  executor: ClientToolSyncExecutor,
+  toolName: string,
+  params: Record<string, unknown>,
+): Promise<unknown> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), Math.max(1000, executor.timeoutMs ?? 30_000));
+  try {
+    const res = await fetch(executor.url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${executor.apiKey}`,
+        "X-Paperclip-Run-Id": executor.runId,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ tool: toolName, parameters: params }),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(
+        `client tool executor failed: ${res.status} ${res.statusText} ${body.slice(0, 200)}`,
+      );
+    }
+    return await res.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // Convert client tools (OpenResponses hosted tools) to ToolDefinition format
-// These tools are intercepted to return a "pending" result instead of executing
+// When a `ClientToolSyncExecutor` is provided the tools are executed inline
+// (real result returned to the LLM); otherwise they fall back to the original
+// "delegated to client" sentinel — see patch 7 above.
 export function toClientToolDefinitions(
   tools: ClientToolDefinition[],
   onClientToolCall?: (toolName: string, params: Record<string, unknown>) => void,
   hookContext?: HookContext,
+  syncExecutor?: ClientToolSyncExecutor,
 ): ToolDefinition[] {
   return tools.map((tool) => {
     const func = tool.function;
@@ -338,13 +390,20 @@ export function toClientToolDefinitions(
         if (onClientToolCall) {
           onClientToolCall(func.name, paramsRecord);
         }
-        // NORA fork patch 6 — return a sentinel that explicitly instructs the
-        // LLM to STOP the current turn instead of guessing a value. The default
-        // wording ("pending / delegated to client") is treated by Qwen-class
-        // models as a normal tool result and they hallucinate a value to keep
-        // generating. The wording below makes the contract obvious so the
-        // model obediently halts; the host will execute the tool out-of-band
-        // and re-issue agent.run with the real result in the next turn.
+        // Patch 7 — synchronous host-side execution path.
+        if (syncExecutor) {
+          try {
+            const real = await executeClientToolViaExecutor(syncExecutor, func.name, paramsRecord);
+            return jsonResult(real);
+          } catch (err) {
+            return jsonResult({
+              status: "error",
+              tool: func.name,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
+        // Legacy path — async caller exec via roundtrip (kept for non-NORA callers).
         return jsonResult({
           status: "awaiting_external_result",
           tool: func.name,

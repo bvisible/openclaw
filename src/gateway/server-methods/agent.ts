@@ -442,6 +442,13 @@ export const agentHandlers: GatewayRequestHandlers = {
           strict?: boolean;
         };
       }>;
+      // NORA fork patch 7 — synchronous executor descriptor for clientTools.
+      clientToolExecutor?: {
+        url: string;
+        apiKey: string;
+        runId: string;
+        timeoutMs?: number;
+      };
       idempotencyKey: string;
       timeout?: number;
       bestEffortDeliver?: boolean;
@@ -1199,6 +1206,8 @@ export const agentHandlers: GatewayRequestHandlers = {
           // NORA fork patch 5 — propagate WS-supplied OpenAI tool definitions
           // through to the embedded runner (mirrors the HTTP /v1/responses path).
           clientTools: request.clientTools,
+          // NORA patch 7 — propagate the synchronous executor descriptor.
+          clientToolExecutor: request.clientToolExecutor,
           inputProvenance,
           abortSignal: activeRunAbort.controller.signal,
           // Internal-only: allow workspace override for spawned subagent runs.
