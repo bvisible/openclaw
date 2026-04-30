@@ -20,6 +20,8 @@ export function buildEmbeddedSystemPrompt(params: {
   reasoningTagHint: boolean;
   heartbeatPrompt?: string;
   skillsPrompt?: string;
+  /** When true, omit the bundled "## Skills" section even if `skillsPrompt` is set. */
+  dropSkillsSection?: boolean;
   docsPath?: string;
   sourcePath?: string;
   ttsHint?: string;
@@ -73,6 +75,7 @@ export function buildEmbeddedSystemPrompt(params: {
     reasoningTagHint: params.reasoningTagHint,
     heartbeatPrompt: params.heartbeatPrompt,
     skillsPrompt: params.skillsPrompt,
+    dropSkillsSection: params.dropSkillsSection,
     docsPath: params.docsPath,
     sourcePath: params.sourcePath,
     ttsHint: params.ttsHint,

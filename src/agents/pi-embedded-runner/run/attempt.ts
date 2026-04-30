@@ -679,8 +679,19 @@ export async function runEmbeddedAttempt(
         ...(err ? { errorCategory: diagnosticErrorCategory(err) } : {}),
       });
     };
+    // Per-agent short-circuit: when agents.list[<id>].tools.allow is an empty
+    // array, the agent is configured to expose no coding tools at all. Skipping
+    // the createOpenClawCodingTools(...) registry build avoids a synchronous
+    // 13-30s setup cost for text-only responder agents (no observable runtime
+    // change vs. the existing applyEmbeddedAttemptToolsAllow filter, which
+    // would have produced an empty list anyway).
+    const noraAgentEntry = params.config?.agents?.list?.find(
+      (entry) => entry.id === sessionAgentId,
+    );
+    const noraToolsBlocked =
+      Array.isArray(noraAgentEntry?.tools?.allow) && noraAgentEntry.tools.allow.length === 0;
     const toolsRaw =
-      params.disableTools || params.modelRun
+      params.disableTools || params.modelRun || noraToolsBlocked
         ? []
         : (() => {
             const allTools = createOpenClawCodingTools({
@@ -1063,6 +1074,10 @@ export async function runEmbeddedAttempt(
     // When toolsAllow is set, use minimal prompt and strip skills catalog
     const effectivePromptMode = params.toolsAllow?.length ? ("minimal" as const) : promptMode;
     const effectiveSkillsPrompt = params.toolsAllow?.length ? undefined : skillsPrompt;
+    // Per-agent opt-out for the "## Skills" prompt block (config: agents.list[].dropSkillsSection).
+    const dropSkillsSection =
+      params.config?.agents?.list?.find((entry) => entry.id === sessionAgentId)
+        ?.dropSkillsSection === true;
     const openClawReferences = await resolveOpenClawReferencePaths({
       workspaceDir: effectiveWorkspace,
       argv1: process.argv[1],
@@ -1122,6 +1137,7 @@ export async function runEmbeddedAttempt(
         reasoningTagHint,
         heartbeatPrompt,
         skillsPrompt: effectiveSkillsPrompt,
+        dropSkillsSection,
         docsPath: openClawReferences.docsPath ?? undefined,
         sourcePath: openClawReferences.sourcePath ?? undefined,
         ttsHint,

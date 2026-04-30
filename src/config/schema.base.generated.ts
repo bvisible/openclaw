@@ -6180,6 +6180,9 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                   description:
                     "Optional allowlist of skills for this agent. If omitted, the agent inherits agents.defaults.skills when set; otherwise skills stay unrestricted. Set [] for no skills. An explicit list fully replaces inherited defaults instead of merging with them.",
                 },
+                dropSkillsSection: {
+                  type: "boolean",
+                },
                 memorySearch: {
                   type: "object",
                   properties: {
