@@ -386,11 +386,16 @@ export function toClientToolDefinitions(
         }
         const adjustedParams = outcome.params;
         const paramsRecord = coerceParamsRecord(adjustedParams);
-        // Notify handler that a client tool was called
-        if (onClientToolCall) {
-          onClientToolCall(func.name, paramsRecord);
-        }
-        // Patch 7 — synchronous host-side execution path.
+        // Patch 7 — synchronous host-side execution path. When provided, the
+        // tool is executed inline and the LLM continues with the real result.
+        // We deliberately DO NOT call onClientToolCall here — the OpenAI
+        // Responses contract uses that callback to set
+        // `clientToolCallDetected`, which forces stopReason="tool_calls" so
+        // the caller knows to re-issue agent.run with the tool result. With
+        // the sync executor that's wasteful: the tool already ran inline, and
+        // a stopReason="tool_calls" would make the caller's roundtrip loop
+        // execute the same tool a second time. So treat this as a regular
+        // tool call from Pi's perspective.
         if (syncExecutor) {
           try {
             const real = await executeClientToolViaExecutor(syncExecutor, func.name, paramsRecord);
@@ -403,7 +408,11 @@ export function toClientToolDefinitions(
             });
           }
         }
-        // Legacy path — async caller exec via roundtrip (kept for non-NORA callers).
+        // Legacy path — async caller exec via roundtrip. Notify the caller so
+        // it can pick up the pendingToolCall and run the tool out-of-band.
+        if (onClientToolCall) {
+          onClientToolCall(func.name, paramsRecord);
+        }
         return jsonResult({
           status: "awaiting_external_result",
           tool: func.name,
