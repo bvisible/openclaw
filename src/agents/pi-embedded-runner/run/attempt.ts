@@ -926,7 +926,11 @@ export async function runEmbeddedAttempt(
       senderIsOwner: params.senderIsOwner,
       warn: (message) => log.warn(message),
     });
-    const effectiveTools = [...tools, ...filteredBundledTools];
+    // When agents.list[<id>].tools.allow is an empty array, suppress *all* tools
+    // (including the bundled MCP/LSP tools). This makes the agent a true text-only
+    // responder: the system prompt won't list any tools, so the model won't try
+    // to emit `<tool_call>` strings or hallucinate tool calls in its reply text.
+    const effectiveTools = noraToolsBlocked ? [] : [...tools, ...filteredBundledTools];
     const allowedToolNames = collectAllowedToolNames({
       tools: effectiveTools,
       clientTools,
@@ -1138,6 +1142,11 @@ export async function runEmbeddedAttempt(
         heartbeatPrompt,
         skillsPrompt: effectiveSkillsPrompt,
         dropSkillsSection,
+        // When tools.allow:[] short-circuits the tool registry, also drop the
+        // "## Tooling" prompt section so the model doesn't see a hardcoded
+        // fallback tool catalog (which would tempt it to emit `<tool_call>`
+        // strings even though no tool is actually available).
+        dropToolingSection: noraToolsBlocked,
         docsPath: openClawReferences.docsPath ?? undefined,
         sourcePath: openClawReferences.sourcePath ?? undefined,
         ttsHint,

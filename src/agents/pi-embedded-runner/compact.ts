@@ -769,6 +769,10 @@ export async function compactEmbeddedPiSessionDirect(
           dropSkillsSection:
             params.config?.agents?.list?.find((entry) => entry.id === sessionAgentId)
               ?.dropSkillsSection === true,
+          dropToolingSection: (() => {
+            const entry = params.config?.agents?.list?.find((e) => e.id === sessionAgentId);
+            return Array.isArray(entry?.tools?.allow) && entry.tools.allow.length === 0;
+          })(),
           docsPath: openClawReferences.docsPath ?? undefined,
           sourcePath: openClawReferences.sourcePath ?? undefined,
           ttsHint,

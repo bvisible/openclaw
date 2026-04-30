@@ -22,6 +22,8 @@ export function buildEmbeddedSystemPrompt(params: {
   skillsPrompt?: string;
   /** When true, omit the bundled "## Skills" section even if `skillsPrompt` is set. */
   dropSkillsSection?: boolean;
+  /** When true, omit the bundled "## Tooling" section entirely (no tool catalog in prompt). */
+  dropToolingSection?: boolean;
   docsPath?: string;
   sourcePath?: string;
   ttsHint?: string;
@@ -76,6 +78,7 @@ export function buildEmbeddedSystemPrompt(params: {
     heartbeatPrompt: params.heartbeatPrompt,
     skillsPrompt: params.skillsPrompt,
     dropSkillsSection: params.dropSkillsSection,
+    dropToolingSection: params.dropToolingSection,
     docsPath: params.docsPath,
     sourcePath: params.sourcePath,
     ttsHint: params.ttsHint,

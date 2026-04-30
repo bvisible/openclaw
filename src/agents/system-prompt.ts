@@ -462,6 +462,13 @@ export function buildAgentSystemPrompt(params: {
   skillsPrompt?: string;
   /** When true, omit the bundled "## Skills" section even if `skillsPrompt` is set. */
   dropSkillsSection?: boolean;
+  /**
+   * When true, omit the bundled "## Tooling" section entirely. Useful for
+   * compact text-only responder agents (with `tools.allow:[]`) that should
+   * not see any tool catalog — otherwise the model may emit `<tool_call>`
+   * strings in its reply text even when no tool is actually available.
+   */
+  dropToolingSection?: boolean;
   heartbeatPrompt?: string;
   docsPath?: string;
   sourcePath?: string;
@@ -706,36 +713,48 @@ export function buildAgentSystemPrompt(params: {
     return "You are a personal assistant running inside OpenClaw.";
   }
 
+  // Per-agent opt-out for the bundled "## Tooling" section. Useful for compact
+  // text-only responder agents (e.g. agents.list[<id>].tools.allow:[] +
+  // dropToolingSection:true) that should not see any tool catalog or sub-agent
+  // guidance — those would otherwise tempt the model into hallucinating
+  // tool calls inside the reply text.
+  const toolingSection =
+    params.dropToolingSection === true
+      ? []
+      : [
+          "## Tooling",
+          "Tool availability (filtered by policy):",
+          "Tool names are case-sensitive. Call tools exactly as listed.",
+          toolLines.length > 0
+            ? toolLines.join("\n")
+            : [
+                "Pi lists the standard tools above. This runtime enables:",
+                "- grep: search file contents for patterns",
+                "- find: find files by glob pattern",
+                "- ls: list directory contents",
+                "- apply_patch: apply multi-file patches",
+                `- ${execToolName}: run shell commands (supports background via yieldMs/background)`,
+                `- ${processToolName}: manage background exec sessions`,
+                "- browser: control OpenClaw's dedicated browser",
+                "- canvas: present/eval/snapshot the Canvas",
+                "- nodes: list/describe/notify/camera/screen on paired nodes",
+                "- cron: manage cron jobs and wake events (use for reminders; when scheduling a reminder, write the systemEvent text as something that will read like a reminder when it fires, and mention that it is a reminder depending on the time gap between setting and firing; include recent context in reminder text if appropriate)",
+                "- sessions_list: list sessions",
+                "- sessions_history: fetch session history",
+                "- sessions_send: send to another session",
+                "- subagents: list/steer/kill sub-agent runs",
+                '- session_status: show usage/time/model state and answer "what model are we using?"',
+              ].join("\n"),
+          "TOOLS.md does not control tool availability; it is user guidance for how to use external tools.",
+          `For long waits, avoid rapid poll loops: use ${execToolName} with enough yieldMs or ${processToolName}(action=poll, timeout=<ms>).`,
+          "If a task is more complex or takes longer, spawn a sub-agent. Completion is push-based: it will auto-announce when done.",
+          'Sub-agents start isolated by default. Use `sessions_spawn` with `context:"fork"` only when the child needs the current transcript context; otherwise omit `context` or use `context:"isolated"`.',
+        ];
+
   const lines = [
     "You are a personal assistant running inside OpenClaw.",
     "",
-    "## Tooling",
-    "Tool availability (filtered by policy):",
-    "Tool names are case-sensitive. Call tools exactly as listed.",
-    toolLines.length > 0
-      ? toolLines.join("\n")
-      : [
-          "Pi lists the standard tools above. This runtime enables:",
-          "- grep: search file contents for patterns",
-          "- find: find files by glob pattern",
-          "- ls: list directory contents",
-          "- apply_patch: apply multi-file patches",
-          `- ${execToolName}: run shell commands (supports background via yieldMs/background)`,
-          `- ${processToolName}: manage background exec sessions`,
-          "- browser: control OpenClaw's dedicated browser",
-          "- canvas: present/eval/snapshot the Canvas",
-          "- nodes: list/describe/notify/camera/screen on paired nodes",
-          "- cron: manage cron jobs and wake events (use for reminders; when scheduling a reminder, write the systemEvent text as something that will read like a reminder when it fires, and mention that it is a reminder depending on the time gap between setting and firing; include recent context in reminder text if appropriate)",
-          "- sessions_list: list sessions",
-          "- sessions_history: fetch session history",
-          "- sessions_send: send to another session",
-          "- subagents: list/steer/kill sub-agent runs",
-          '- session_status: show usage/time/model state and answer "what model are we using?"',
-        ].join("\n"),
-    "TOOLS.md does not control tool availability; it is user guidance for how to use external tools.",
-    `For long waits, avoid rapid poll loops: use ${execToolName} with enough yieldMs or ${processToolName}(action=poll, timeout=<ms>).`,
-    "If a task is more complex or takes longer, spawn a sub-agent. Completion is push-based: it will auto-announce when done.",
-    'Sub-agents start isolated by default. Use `sessions_spawn` with `context:"fork"` only when the child needs the current transcript context; otherwise omit `context` or use `context:"isolated"`.',
+    ...toolingSection,
     ...nativeCommandGuidanceLines,
     ...(acpHarnessSpawnAllowed
       ? [
