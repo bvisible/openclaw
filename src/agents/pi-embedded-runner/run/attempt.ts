@@ -1389,6 +1389,14 @@ export async function runEmbeddedAttempt(
       if (clientToolNameConflicts.length > 0) {
         throw createClientToolNameConflictError(clientToolNameConflicts);
       }
+      // NORA diag — log whether the sync executor is wired so we can see
+      // when the descriptor is dropped somewhere in the propagation chain.
+      // Strip in Phase 5 cleanup.
+      log.debug(
+        `[NORA-DIAG] toClientToolDefinitions: clientTools=${clientTools?.length ?? 0} hasSyncExecutor=${Boolean(
+          params.clientToolExecutor,
+        )} executorUrl=${params.clientToolExecutor?.url ?? "(none)"}`,
+      );
       const clientToolDefs = clientTools
         ? toClientToolDefinitions(
             clientTools,
