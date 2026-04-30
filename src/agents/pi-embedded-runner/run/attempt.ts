@@ -1389,22 +1389,11 @@ export async function runEmbeddedAttempt(
       if (clientToolNameConflicts.length > 0) {
         throw createClientToolNameConflictError(clientToolNameConflicts);
       }
-      // NORA fork patch 6 — abort the LLM turn synchronously when a clientTool
-      // is invoked. The default behaviour returns a "pending" sentinel and lets
-      // the LLM keep generating (see pi-tool-definition-adapter.ts), which makes
-      // Qwen-class models hallucinate values rather than wait for the caller to
-      // post the real tool_result in the next turn. Interrupting via the active
-      // session yields cleanly because run.ts:2345 already sets
-      // stopReason="tool_calls" whenever clientToolCallDetected is non-null.
-      let clientToolAbortRef: { abort: () => Promise<void> | void } | null = null;
       const clientToolDefs = clientTools
         ? toClientToolDefinitions(
             clientTools,
             (toolName, toolParams) => {
               clientToolCallDetected = { name: toolName, params: toolParams };
-              if (clientToolAbortRef) {
-                void clientToolAbortRef.abort();
-              }
             },
             {
               agentId: sessionAgentId,
@@ -1450,9 +1439,6 @@ export async function runEmbeddedAttempt(
       }
       session.setActiveToolsByName(sessionToolAllowlist);
       const activeSession = session;
-      // Wire the clientTool callback (declared above) to this session so it
-      // can interrupt generation synchronously. See patch 6 above.
-      clientToolAbortRef = activeSession;
       if (typeof activeSession.agent.convertToLlm === "function") {
         const baseConvertToLlm = activeSession.agent.convertToLlm.bind(activeSession.agent);
         activeSession.agent.convertToLlm = async (messages) =>

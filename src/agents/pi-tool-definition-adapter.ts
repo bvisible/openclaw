@@ -338,11 +338,18 @@ export function toClientToolDefinitions(
         if (onClientToolCall) {
           onClientToolCall(func.name, paramsRecord);
         }
-        // Return a pending result - the client will execute this tool
+        // NORA fork patch 6 — return a sentinel that explicitly instructs the
+        // LLM to STOP the current turn instead of guessing a value. The default
+        // wording ("pending / delegated to client") is treated by Qwen-class
+        // models as a normal tool result and they hallucinate a value to keep
+        // generating. The wording below makes the contract obvious so the
+        // model obediently halts; the host will execute the tool out-of-band
+        // and re-issue agent.run with the real result in the next turn.
         return jsonResult({
-          status: "pending",
+          status: "awaiting_external_result",
           tool: func.name,
-          message: "Tool execution delegated to client",
+          message:
+            "STOP your turn immediately. Do not generate any further tokens, do not guess a value, do not summarise. The host will execute this tool externally and will provide the actual result in the next user turn. End the turn now.",
         });
       },
     } satisfies ToolDefinition;
