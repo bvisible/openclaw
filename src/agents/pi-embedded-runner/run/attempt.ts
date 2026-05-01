@@ -1147,7 +1147,12 @@ export async function runEmbeddedAttempt(
         // "## Tooling" prompt section so the model doesn't see a hardcoded
         // fallback tool catalog (which would tempt it to emit `<tool_call>`
         // strings even though no tool is actually available).
-        dropToolingSection: noraToolsBlocked,
+        // NORA Phase 6.C — also drop the "## Tooling" section when a
+        // synchronous clientTool executor is wired: the agent already sees
+        // its tools natively via `clientTools[]` and the Pi tooling section
+        // would just duplicate them in markdown, inflating the system prompt
+        // by ~15 K chars per turn for no functional gain.
+        dropToolingSection: noraToolsBlocked || Boolean(params.clientToolExecutor),
         docsPath: openClawReferences.docsPath ?? undefined,
         sourcePath: openClawReferences.sourcePath ?? undefined,
         ttsHint,
