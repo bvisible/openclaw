@@ -82,6 +82,7 @@ import { buildModelAliasLines } from "../../model-alias-lines.js";
 import { resolveModelAuthMode } from "../../model-auth.js";
 import { resolveDefaultModelForAgent } from "../../model-selection.js";
 import { supportsModelTools } from "../../model-tool-support.js";
+import { noraDiag } from "../../nora-debug.js";
 import { releaseWsSession } from "../../openai-ws-stream.js";
 import { resolveOwnerDisplaySetting } from "../../owner-display.js";
 import { createBundleLspToolRuntime } from "../../pi-bundle-lsp-runtime.js";
@@ -1389,13 +1390,15 @@ export async function runEmbeddedAttempt(
       if (clientToolNameConflicts.length > 0) {
         throw createClientToolNameConflictError(clientToolNameConflicts);
       }
-      // NORA diag — log whether the sync executor is wired so we can see
-      // when the descriptor is dropped somewhere in the propagation chain.
-      // Strip in Phase 5 cleanup.
-      log.debug(
-        `[NORA-DIAG] toClientToolDefinitions: clientTools=${clientTools?.length ?? 0} hasSyncExecutor=${Boolean(
-          params.clientToolExecutor,
-        )} executorUrl=${params.clientToolExecutor?.url ?? "(none)"}`,
+      // NORA Phase 6 — diagnostic gated by NORA_DEBUG env toggle. Useful to
+      // see when the descriptor is dropped somewhere in the propagation chain.
+      // Activate with `NORA_DEBUG=1 systemctl --user restart openclaw-gateway`.
+      noraDiag(
+        "attempt-clienttools",
+        () =>
+          `clientTools=${clientTools?.length ?? 0} hasSyncExecutor=${Boolean(
+            params.clientToolExecutor,
+          )} executorUrl=${params.clientToolExecutor?.url ?? "(none)"}`,
       );
       const clientToolDefs = clientTools
         ? toClientToolDefinitions(
