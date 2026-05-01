@@ -325,10 +325,40 @@ function dispatchAgentRunFromGateway(params: {
           terminalSummary: aborted ? "aborted" : "completed",
         });
       }
+      // NORA Phase 6.C — extract the actual assistant final text instead of
+      // a hardcoded "completed" sentinel. Paperclip persists the run's
+      // `resultJson ->> 'summary'` and surfaces it as the issue's auto-comment
+      // (heartbeat-run-summary), so a literal "completed" string makes
+      // every NORA workitem look identical regardless of what the agent
+      // actually answered. Prefer, in order: result.payloads[0].text (the
+      // last assistant chunk), result.meta.finalAssistantVisibleText, then
+      // fall back to "completed" only when nothing meaningful is available.
+      const resultRecord = (result ?? {}) as Record<string, unknown>;
+      const payloadTexts = (() => {
+        const raw = resultRecord["payloads"];
+        if (!Array.isArray(raw)) return [];
+        const lines: string[] = [];
+        for (const entry of raw) {
+          if (entry && typeof entry === "object") {
+            const text = (entry as Record<string, unknown>)["text"];
+            if (typeof text === "string" && text.trim().length > 0) lines.push(text);
+          }
+        }
+        return lines;
+      })();
+      const meta = (resultRecord["meta"] ?? {}) as Record<string, unknown>;
+      const metaFinalText =
+        typeof meta["finalAssistantVisibleText"] === "string"
+          ? (meta["finalAssistantVisibleText"] as string)
+          : null;
+      const summary =
+        (payloadTexts.length > 0 ? payloadTexts.join("\n").trim() : null) ??
+        (metaFinalText && metaFinalText.trim().length > 0 ? metaFinalText.trim() : null) ??
+        "completed";
       const payload = {
         runId: params.runId,
         status: "ok" as const,
-        summary: "completed",
+        summary,
         result,
       };
       setGatewayDedupeEntry({
